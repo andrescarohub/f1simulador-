@@ -1,24 +1,25 @@
 class CircuitoComponent extends HTMLElement {
     constructor() {
         super();
-
-        // Crear shadow DOM para encapsular estilos y evitar conflictos
         this.attachShadow({ mode: "open" });
-
-        // Estructura del componente
         this.shadowRoot.innerHTML = `
             <style>
                 .circuito-card {
-                    border: 2px solid #ff0000;
+                    border: 3px solid red;
                     padding: 10px;
                     border-radius: 10px;
                     text-align: center;
-                    background-color: #222;
+                    background-color: black;
                     color: white;
-                    width: 200px;
+                    width: 250px;
                     margin: 10px;
+                    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
                 }
-                .circuito-card img {
+                .circuito-card:hover {
+                    transform: scale(1.05);
+                    box-shadow: 0 0 15px red;
+                }
+                .circuito-card video {
                     width: 100%;
                     border-radius: 10px;
                 }
@@ -28,25 +29,37 @@ class CircuitoComponent extends HTMLElement {
                 .btn {
                     background-color: black;
                     color: white;
-                    border: none;
+                    border: 1px solid red;
                     padding: 5px 10px;
                     margin: 3px;
                     cursor: pointer;
                     border-radius: 5px;
                 }
                 .btn:hover {
-                    background-color: #444;
+                    background-color: red;
+                }
+                .opciones-menu {
+                    display: none;
+                }
+                .opciones-menu.show {
+                    display: block;
                 }
             </style>
             <div class="circuito-card">
-                <img src="assets/pista.png" alt="Circuito">
+                <video autoplay loop muted>
+                    <source src="assets/pista.mp4" type="video/mp4">
+                    Tu navegador no soporta videos HTML5.
+                </video>
                 <h3 id="nombre"></h3>
                 <p id="ubicacion"></p>
                 <p id="distancia"></p>
                 <p id="condiciones"></p>
                 <div class="botones">
-                    <button class="btn editar">Editar</button>
-                    <button class="btn eliminar">Eliminar</button>
+                    <button class="btn opciones">Opciones</button>
+                    <div class="opciones-menu">
+                        <button class="btn editar">Editar</button>
+                        <button class="btn eliminar">Eliminar</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -55,60 +68,42 @@ class CircuitoComponent extends HTMLElement {
     connectedCallback() {
         this.shadowRoot.querySelector("#nombre").textContent = this.getAttribute("nombre");
         this.shadowRoot.querySelector("#ubicacion").textContent = `Ubicación: ${this.getAttribute("ubicacion")}`;
-        this.shadowRoot.querySelector("#distancia").textContent = `Distancia: ${this.getAttribute("distancia")}`;
+        this.shadowRoot.querySelector("#distancia").textContent = `Distancia: ${this.getAttribute("distancia")} km`;
         this.shadowRoot.querySelector("#condiciones").textContent = `Condiciones: ${this.getAttribute("condiciones")}`;
 
-        // Eventos para editar y eliminar
+        // Manejo de menú de opciones
+        const btnOpciones = this.shadowRoot.querySelector(".opciones");
+        const menuOpciones = this.shadowRoot.querySelector(".opciones-menu");
+
+        btnOpciones.addEventListener("click", () => {
+            menuOpciones.classList.toggle("show");
+        });
+
+        // Evento para eliminar
         this.shadowRoot.querySelector(".eliminar").addEventListener("click", () => {
             this.remove();
             eliminarCircuito(this.getAttribute("nombre"));
         });
 
+        // Evento para editar
         this.shadowRoot.querySelector(".editar").addEventListener("click", () => {
             cargarEdicionCircuito(this);
         });
     }
-    
-}
-const galeriaCircuitos = document.getElementById("galeria-circuitos");
-
-// Función para agregar un circuito
-function agregarCircuito(nombre, ubicacion, distancia, condiciones) {
-    const circuito = document.createElement("circuito-component");
-    circuito.setAttribute("nombre", nombre);
-    circuito.setAttribute("ubicacion", ubicacion);
-    circuito.setAttribute("distancia", distancia);
-    circuito.setAttribute("condiciones", condiciones);
-    galeriaCircuitos.appendChild(circuito);
-
-    guardarCircuitoLocal(nombre, ubicacion, distancia, condiciones);
 }
 
-// Función para eliminar un circuito del almacenamiento
-function eliminarCircuito(nombre) {
-    let circuitos = JSON.parse(localStorage.getItem("circuitos")) || [];
-    circuitos = circuitos.filter(circuito => circuito.nombre !== nombre);
-    localStorage.setItem("circuitos", JSON.stringify(circuitos));
-}
-
-// Función para cargar la lista de circuitos guardados
-function cargarCircuitos() {
-    let circuitos = JSON.parse(localStorage.getItem("circuitos")) || [];
-    circuitos.forEach(({ nombre, ubicacion, distancia, condiciones }) => {
-        agregarCircuito(nombre, ubicacion, distancia, condiciones);
-    });
-}
-
-// Función para guardar en LocalStorage
-function guardarCircuitoLocal(nombre, ubicacion, distancia, condiciones) {
-    let circuitos = JSON.parse(localStorage.getItem("circuitos")) || [];
-    circuitos.push({ nombre, ubicacion, distancia, condiciones });
-    localStorage.setItem("circuitos", JSON.stringify(circuitos));
-}
-
-// Cargar los circuitos al inicio
-document.addEventListener("DOMContentLoaded", cargarCircuitos);
-
-
-// Registrar el Web Component
 customElements.define("circuito-component", CircuitoComponent);
+
+// Función para eliminar un circuito del servidor
+async function eliminarCircuito(nombre) {
+    try {
+        const response = await fetch(`http://localhost:3000/circuitos?nombre=${nombre}`, {
+            method: "DELETE"
+        });
+        if (!response.ok) {
+            throw new Error("Error al eliminar el circuito");
+        }
+    } catch (error) {
+        console.error("Error eliminando el circuito:", error);
+    }
+}
